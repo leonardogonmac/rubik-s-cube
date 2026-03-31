@@ -25,6 +25,8 @@ const char FACE_COLOR[6] = {
 
 vector<face> get_cube();
 
+vector<face> read_cube();
+
 void print_face(vector<face>& cube, side s);
 
 void print_cube(vector<face> cube);
@@ -37,7 +39,7 @@ void D(vector<face>& cube, direction d);
 
 void move_column(vector<face>& cube, side from, side to, int id);
 
-void tmp_column(vector<face>& cube, vector<char>& tmp, side to, int id);
+void tmp_column(vector<face>& cube, vector<char>& tmp, side to, int id, bool rev=false);
 
 void L(vector<face>& cube, direction d);
 
@@ -50,8 +52,5 @@ void F(vector<face>& cube, direction d);
 void B(vector<face>& cube, direction d);
 
 void move(vector<face>& cube, side s, direction d);
-
-
-
 
 #endif

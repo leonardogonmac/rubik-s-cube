@@ -12,7 +12,7 @@ corner get_corner(vector<face>& cube, set<side> sides){
     else if(sides.count(UP) && sides.count(LEFT) && sides.count(BACK)){
         fcoord[UP] = {0,0};
         fcoord[LEFT] = {0,0};
-        fcoord[BACK] = {0,2};
+        fcoord[BACK] = {2,0};
     }
     else if(sides.count(UP) && sides.count(RIGHT) && sides.count(FRONT)){
         fcoord[UP] = {2,2};
@@ -22,7 +22,7 @@ corner get_corner(vector<face>& cube, set<side> sides){
     else if(sides.count(UP) && sides.count(RIGHT) && sides.count(BACK)){
         fcoord[UP] = {0,2};
         fcoord[RIGHT] = {0,2};
-        fcoord[BACK] = {0,0};
+        fcoord[BACK] = {2,2};
     }
     else if(sides.count(DOWN) && sides.count(LEFT) && sides.count(FRONT)){
         fcoord[DOWN] = {0,0};
@@ -32,7 +32,7 @@ corner get_corner(vector<face>& cube, set<side> sides){
     else if(sides.count(DOWN) && sides.count(LEFT) && sides.count(BACK)){
         fcoord[DOWN] = {2,0};
         fcoord[LEFT] = {2,0};
-        fcoord[BACK] = {2,2};
+        fcoord[BACK] = {0,0};
     }
     else if(sides.count(DOWN) && sides.count(RIGHT) && sides.count(FRONT)){
         fcoord[DOWN] = {0,2};
@@ -42,7 +42,7 @@ corner get_corner(vector<face>& cube, set<side> sides){
     else if(sides.count(DOWN) && sides.count(RIGHT) && sides.count(BACK)){
         fcoord[DOWN] = {2,2};
         fcoord[RIGHT] = {2,2};
-        fcoord[BACK] = {2,0};
+        fcoord[BACK] = {0,2};
     }
     map<side, char> colors;
     for(auto s: fcoord)
@@ -73,6 +73,7 @@ int cornerId(const corner& c) {
         obs.push_back(kv.second);
     }
     sort(obs.begin(), obs.end());
+    // cout << obs << '\n';
 
     // 2) check against each cubie spec
     for (int id = 0; id < 8; ++id) {
@@ -82,7 +83,7 @@ int cornerId(const corner& c) {
             spec.push_back(FACE_COLOR[f]);  // solved color on that face
         }
         sort(spec.begin(), spec.end());
-        cout << obs <<  "||" << spec << '\n';
+        //cout << obs <<  "||" << spec << '\n';
 
         if (spec == obs) {
             return id; // CornerId id
@@ -103,23 +104,19 @@ int cornerUDColor(int id) {
 }
 
 int cornerOrientation(const corner& c, int id) {
-    char udColor = cornerUDColor(id);
+    char upColor = FACE_COLOR[UP];
+    char downColor = FACE_COLOR[DOWN];
 
-    side udSide = UP;
-    bool found = false;
-    for (auto &kv : c.colors) {
-        side s = kv.first;
-        char col = kv.second;
-        if (col == udColor) {
-            udSide = s;
-            found = true;
-            break;
+    for (int ori = 0; ori < 3; ++ori) {
+        side s = CORNER_SPECS[id].faces[ori];
+        char col = c.colors.at(s);
+
+        if (col == upColor || col == downColor) {
+            return ori;
         }
     }
 
-    if (udSide == UP || udSide == DOWN) return 0;
-    if (udSide == RIGHT || udSide == LEFT) return 1;
-    return 2;
+    throw std::runtime_error("cornerOrientation: no U/D color found");
 }
 
 pair<int*,int*> extractCornerCubies(vector<face>& cube){
@@ -131,7 +128,7 @@ pair<int*,int*> extractCornerCubies(vector<face>& cube){
         const corner& c = cs[pos];
         int id = cornerId(c);
         perm[pos] = id;
-        ori[pos]  = cornerOrientation(c, id);
+        ori[pos]  = cornerOrientation(c, pos);
     }
     return {perm, ori};
 }
@@ -169,18 +166,18 @@ uint64_t cornerIndex(int perm[], int ori[]) {
 
 int cornerHeuristic(vector<face>& cube, const NibblePDB& cornerPDB) {
     auto [perm, ori] = extractCornerCubies(cube);
-    cout << "PERM: ";
-    for(int i = 0; i < 8; i++)
-        cout << perm[i] << ' ';
-    cout << '\n';
-    cout << "ORI: ";
-    for(int i = 0; i < 8; i++)
-        cout << ori[i] << ' ';
-    cout << '\n';
+    // cout << "PERM: ";
+    // for(int i = 0; i < 8; i++)
+    //     cout << perm[i] << ' ';
+    // cout << '\n';
+    // cout << "ORI: ";
+    // for(int i = 0; i < 8; i++)
+    //     cout << ori[i] << ' ';
+    // cout << '\n';
     uint64_t idx = cornerIndex(perm, ori);
-    cout << "IDX = " << idx << '\n';
+    // cout << "IDX = " << idx << '\n';
     uint8_t raw  = cornerPDB.getDistance(idx);
 
     if (raw == 0xF) return 0;
-    return ((int) raw) - 1;
+    return ((int) raw);
 }

@@ -9,6 +9,15 @@ vector<uint64_t> factorial(){
 
 vector<uint64_t> FACT = factorial();
 
+vector<face> read_cube(){
+    vector<face> cube(6, face(3, vector<char>(3, 0)));
+        for(int i = 0; i < 6; i++)
+            for(int j = 0; j < 3; j++)
+                for(int k = 0; k < 3; k++)
+                    cin >> cube[i][j][k];
+    return cube;
+}
+
 vector<face> get_cube(){
     vector<face> cube(6, face(3, vector<char>(3, 0)));
     for(int i = 0; i < 6; i++)
@@ -107,33 +116,35 @@ void U(vector<face>& cube, direction d){
     vector<char> tmp = cube[FRONT][0];
     if(d == CLOCK){
         cube[FRONT][0] = cube[RIGHT][0];
-        cube[RIGHT][0] = cube[BACK][0];
-        cube[BACK][0] = cube[LEFT][0];
+        cube[RIGHT][0] = vector<char>(cube[BACK][2].rbegin(), cube[BACK][2].rend());
+        cube[BACK][2] = vector<char>(cube[LEFT][0].rbegin(), cube[LEFT][0].rend());
         cube[LEFT][0] = tmp;
         rotate(cube[UP], CLOCK);
     }
     else{
         cube[FRONT][0] = cube[LEFT][0];
-        cube[LEFT][0] = cube[BACK][0];
-        cube[BACK][0] = cube[RIGHT][0];
+        cube[LEFT][0] = vector<char>(cube[BACK][2].rbegin(), cube[BACK][2].rend());
+        cube[BACK][2] = vector<char>(cube[RIGHT][0].rbegin(), cube[RIGHT][0].rend());
         cube[RIGHT][0] = tmp;
         rotate(cube[UP], COUNTER);
     }
 }
 
+
+
 void D(vector<face>& cube, direction d){
     vector<char> tmp = cube[FRONT][2];
     if(d == COUNTER){
         cube[FRONT][2] = cube[RIGHT][2];
-        cube[RIGHT][2] = cube[BACK][2];
-        cube[BACK][2] = cube[LEFT][2];
+        cube[RIGHT][2] = vector<char>(cube[BACK][0].rbegin(), cube[BACK][0].rend());
+        cube[BACK][0] = vector<char>(cube[LEFT][2].rbegin(), cube[LEFT][2].rend());
         cube[LEFT][2] = tmp;
         rotate(cube[DOWN], COUNTER);
     }
     else{
         cube[FRONT][2] = cube[LEFT][2];
-        cube[LEFT][2] = cube[BACK][2];
-        cube[BACK][2] = cube[RIGHT][2];
+        cube[LEFT][2] = vector<char>(cube[BACK][0].rbegin(), cube[BACK][0].rend());
+        cube[BACK][0] = vector<char>(cube[RIGHT][2].rbegin(), cube[RIGHT][2].rend());
         cube[RIGHT][2] = tmp;
         rotate(cube[DOWN], CLOCK);
     }
@@ -145,10 +156,17 @@ void move_column(vector<face>& cube, side from, side to, int id){
     cube[to][2][id] = cube[from][2][id];
 }
 
-void tmp_column(vector<face>& cube, vector<char>& tmp, side to, int id){
-    cube[to][0][id] = tmp[0];
-    cube[to][1][id] = tmp[1];
-    cube[to][2][id] = tmp[2];
+void tmp_column(vector<face>& cube, vector<char>& tmp, side to, int id, bool rev){
+    if(!rev){
+        cube[to][0][id] = tmp[0];
+        cube[to][1][id] = tmp[1];
+        cube[to][2][id] = tmp[2];
+    }
+    else{
+        cube[to][0][id] = tmp[2];
+        cube[to][1][id] = tmp[1];
+        cube[to][2][id] = tmp[0];
+    }
 }
 
 void L(vector<face>& cube, direction d){
@@ -199,17 +217,19 @@ vector<char> get_column(face& f, int id){
 void F(vector<face>& cube, direction d){
     vector<char> tmp = cube[UP][2];
     if(d == CLOCK){
-        cube[UP][2] = get_column(cube[LEFT], 2);
+        vector<char> u2 = get_column(cube[LEFT], 2);
+        cube[UP][2] = vector<char>(u2.rbegin(), u2.rend());
         tmp_column(cube, cube[DOWN][0], LEFT, 2);
-        cube[DOWN][0] = get_column(cube[RIGHT], 0);
+        vector<char> r0 = get_column(cube[RIGHT], 0);
+        cube[DOWN][0] = vector<char>(r0.rbegin(), r0.rend());
         tmp_column(cube, tmp, RIGHT, 0);
         rotate(cube[FRONT], CLOCK);
     }
     else{
         cube[UP][2] = get_column(cube[RIGHT], 0);
-        tmp_column(cube, cube[DOWN][0], RIGHT, 0);
+        tmp_column(cube, cube[DOWN][0], RIGHT, 0, true);
         cube[DOWN][0] = get_column(cube[LEFT], 2);
-        tmp_column(cube, tmp, LEFT, 2);
+        tmp_column(cube, tmp, LEFT, 2, true);
         rotate(cube[FRONT], COUNTER);
     }
 
@@ -217,17 +237,19 @@ void F(vector<face>& cube, direction d){
 void B(vector<face>& cube, direction d){
     vector<char> tmp = cube[UP][0];
     if(d == COUNTER){
-        cube[UP][0] = get_column(cube[LEFT], 0);
+        vector<char> u0 = get_column(cube[LEFT], 0);
+        cube[UP][0] = vector<char>(u0.rbegin(), u0.rend());
         tmp_column(cube, cube[DOWN][2], LEFT, 0);
-        cube[DOWN][2] = get_column(cube[RIGHT], 2);
+        vector<char> d2 = get_column(cube[RIGHT], 2);
+        cube[DOWN][2] = vector<char>(d2.rbegin(), d2.rend());
         tmp_column(cube, tmp, RIGHT, 2);
         rotate(cube[BACK], COUNTER);
     }
     else{
         cube[UP][0] = get_column(cube[RIGHT], 2);
-        tmp_column(cube, cube[DOWN][2], RIGHT, 2);
+        tmp_column(cube, cube[DOWN][2], RIGHT, 2, true);
         cube[DOWN][2] = get_column(cube[LEFT], 0);
-        tmp_column(cube, tmp, LEFT, 0);
+        tmp_column(cube, tmp, LEFT, 0, true);
         rotate(cube[BACK], CLOCK);
     }
 

@@ -45,11 +45,16 @@ NibblePDB::NibblePDB(const std::string& filename, std::uint64_t numEntries, std:
     // Start by returning it directly, then calibrate using a few test states.
     std::uint8_t NibblePDB::getDistance(std::uint64_t index) const {
         std::uint8_t v = getRaw(index);
+        if (v == 0xF) {
+            throw std::runtime_error("PDB entry is unreachable/uninitialized");
+        }
 
-        // In Ben’s DB, 0xF is used as a "no value" / unreachable marker for some entries.
-        if (v == 0xF) return 0;  // treat unreachable as 0 for heuristic purposes
+        if (v == 0) {
+            throw std::runtime_error("Invalid PDB entry: 0 cannot occur when stored as d+1");
+        }
 
-        return v;  // for now, assume v is the distance; you can adjust (v-1) if needed
+        return v - 1;
+
     }
 
     std::uint64_t NibblePDB::size() const { return numEntries; }
