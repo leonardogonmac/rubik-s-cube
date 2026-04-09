@@ -29,7 +29,9 @@ vector<face> read_cube();
 
 void print_face(vector<face>& cube, side s);
 
-void print_cube(vector<face> cube);
+void print_sample(vector<face>& cube);
+
+void print_cube(vector<face>& cube);
 
 void rotate(face& f, direction d);
 

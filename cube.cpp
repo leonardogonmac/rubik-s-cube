@@ -56,7 +56,18 @@ void print_face(vector<face>& cube, side s){
     }
 }
 
-void print_cube(vector<face> cube){
+void print_sample(vector<face>& cube){
+    for(int i = 0; i < 6; i++){
+        for(int j = 0; j < 3; j++){
+            for(int k = 0; k < 3; k++)
+                cout << cube[i][j][k] << " ";
+            cout << "\n";
+        }
+        cout << '\n';
+    }
+}
+
+void print_cube(vector<face>& cube){
     cout << "===================================================\n\n";
     for(int i = 0; i < 6; i++){
         if(i == 0 || i > 3){

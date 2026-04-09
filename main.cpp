@@ -50,34 +50,100 @@ bool solved(vector<face>& cube) {
     return true;
 }
 
-void astar(vector<face>& cube, NibblePDB& cornerPDB){
-    cout << "astar started\n";
-    map<size_t, vector<face>> open, closed;
-    priority_queue<pair<size_t,vector<face>>> pq;
-    open[fhash(cube)] = cube;
-    pq.push({-cornerHeuristic(cube, cornerPDB), cube});
-    while(!pq.empty()){
-        vector<face> v = pq.top().second;
-        pq.pop();
-        open.erase(fhash(v));
-        closed[fhash(v)] = v;
+// void astar(vector<face>& cube, NibblePDB& cornerPDB){
+//     cout << "astar started\n";
+//     map<size_t, vector<face>> open, closed;
+//     priority_queue<pair<size_t,vector<face>>> pq;
+//     open[fhash(cube)] = cube;
+//     pq.push({-cornerHeuristic(cube, cornerPDB), cube});
+//     while(!pq.empty()){
+//         auto [w, v] = pq.top();
+//         pq.pop();
+//         w = -w; w -= cornerHeuristic(v, cornerPDB);
+//         open.erase(fhash(v));
+//         closed[fhash(v)] = v;
+//         vector<vector<face>> adj = get_adj(v);
+//         for(auto a: adj){
+//             if(solved(a)){
+//                 print_cube(a);
+//                 cout << w + 1 << '\n';
+//                 return;
+//             }
+//             if(!open.count(fhash(a)) && !closed.count(fhash(a))){
+//                 open[fhash(a)] = a;
+//                 pq.push({-(cornerHeuristic(a, cornerPDB) + w + 1), a});
+//             }
+//         }
+//     }    
+// }
+
+vector<map<size_t, vector<face>>> open, closed;
+vector<priority_queue<pair<size_t,vector<face>>>> pq;
+vector<queue<pair<size_t,vector<face>>>> qs;
+vector<mutex> mtx;
+size_t num = 0;
+bool solution_found = false;
+
+void enqueue(size_t target, vector<face>& a, size_t w){
+    mtx[target].lock();
+    qs[target].push({(w + 1), a});
+    mtx[target].unlock();
+}
+
+void dequeue(size_t id, NibblePDB& cornerPDB){
+    queue<pair<size_t,vector<face>>> q;
+    mtx[id].lock();
+    while(!qs[id].empty()){
+        q.push(qs[id].front());
+        qs[id].pop();
+    }
+    mtx[id].unlock();
+    while(!q.empty()){
+        auto [w, v] = q.front();
+        q.pop();
+        if( !open[id].count(fhash(v)) && !closed[id].count(fhash(v)) ){
+            open[id][fhash(v)] = v;
+            pq[id].push({-(cornerHeuristic(v, cornerPDB) + w), v});
+        }
+    }
+}
+
+void thread_astar(vector<face> cube, size_t id){
+    cout << "thread " << id << " started\n";
+    NibblePDB cornerPDB("./pdbs/corner" + to_string(id) + ".pdb", NUM_CORNER_STATES, 1);
+    open[id][fhash(cube)] = cube;
+    pq[id].push({-cornerHeuristic(cube, cornerPDB), cube});
+    while(!pq[id].empty()){
+        if(solution_found) 
+            return;
+        auto [w, v] = pq[id].top();
+        pq[id].pop();
+        w = -w; w -= cornerHeuristic(v, cornerPDB);
+        open[id].erase(fhash(v));
+        closed[id][fhash(v)] = v;
         vector<vector<face>> adj = get_adj(v);
         for(auto a: adj){
+            size_t target = fhash(a) % num;
             if(solved(a)){
+                solution_found = true;
                 print_cube(a);
+                cout << w + 1 << '\n';
                 return;
             }
-            if(!open.count(fhash(a)) && !closed.count(fhash(a))){
-                open[fhash(a)] = a;
-                pq.push({-cornerHeuristic(a, cornerPDB), a});
+            if(target == id && !open[id].count(fhash(a)) && !closed[id].count(fhash(a))){
+                open[id][fhash(a)] = a;
+                pq[id].push({-(cornerHeuristic(a, cornerPDB) + w + 1), a});
             }
+            else
+                enqueue(target, a, w);
         }
+        dequeue(id, cornerPDB);
     }    
 }
 
-void sample(NibblePDB& cornerPDB){
+void sample(){
     vector<face> cube = get_cube();
-    print_cube(cube);
+    //print_cube(cube);
     F(cube, CLOCK);
     L(cube, CLOCK);
     B(cube, COUNTER);
@@ -88,15 +154,38 @@ void sample(NibblePDB& cornerPDB){
     L(cube, COUNTER);
     L(cube, COUNTER);
     F(cube, CLOCK);
-
-    print_cube(cube);
-    cout << cornerHeuristic(cube, cornerPDB) << "\n";
+    U(cube, CLOCK);
+    D(cube, CLOCK);
+    //D(cube, CLOCK);
+    //L(cube, COUNTER);
+    //R(cube, CLOCK);
+    //F(cube, CLOCK);
+    //F(cube, CLOCK);
+    //B(cube, COUNTER);
+    print_sample(cube);
 }
 
-int main(){
-    NibblePDB cornerPDB("pdbs/corner.pdb", NUM_CORNER_STATES, 1);
+int main(int argc, char* argv[]){
+    if(argc == 1){
+        sample();
+        return 0;
+    }
+
+    num = atoi(argv[1]);
+    open = vector<map<size_t, vector<face>>>(num);
+    closed = vector<map<size_t, vector<face>>>(num);
+    pq = vector<priority_queue<pair<size_t,vector<face>>>>(num);
+    qs = vector<queue<pair<size_t,vector<face>>>>(num);
+    mtx = vector<mutex>(num);
+    
     vector<face> cube = read_cube();
-    astar(cube, cornerPDB);
-    //sample(cornerPDB);
+    
+    vector<thread> ts;
+    for(size_t i = 0; i < num; i++)
+        ts.emplace_back(thread_astar, cube, i);
+
+    for(size_t i = 0; i < num; i++)
+        ts[i].join();
+
     return 0;
 }
