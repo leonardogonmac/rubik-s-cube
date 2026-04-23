@@ -144,25 +144,38 @@ void thread_astar(vector<face> cube, size_t id){
 
 void sample(){
     vector<face> cube = get_cube();
-    //print_cube(cube);
-    U(cube, CLOCK);
-    D(cube, COUNTER);
-    U(cube, CLOCK);
-    B(cube, COUNTER);
-    F(cube, CLOCK);
-    F(cube, CLOCK);
-    D(cube, CLOCK);
-    R(cube, COUNTER);
-    R(cube, COUNTER);
-    L(cube, CLOCK);
-    L(cube, CLOCK);
-    U(cube, CLOCK);
-    //D(cube, CLOCK);
-    //L(cube, COUNTER);
-    //R(cube, CLOCK);
-    //F(cube, CLOCK);
-    //F(cube, CLOCK);
-    //B(cube, COUNTER);
+    int moves, m = -1;
+    cin >> moves;
+    while(moves--){
+        while(true){
+            srand(time(0));
+            int mm = rand() % 6;
+            if(mm != m){
+                m = mm;
+                break;
+            }
+        }
+        switch (m){
+            case 0:
+                U(cube, CLOCK);
+                break;
+            case 1:
+                D(cube, CLOCK);
+                break;
+            case 2:
+                L(cube, CLOCK);
+                break;
+            case 3:
+                R(cube, CLOCK);
+                break;
+            case 4:
+                F(cube, CLOCK);
+                break;
+            case 5:
+                B(cube, CLOCK);
+                break;
+        }
+    }
     print_sample(cube);
 }
 
