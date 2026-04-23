@@ -77,21 +77,21 @@ bool solved(vector<face>& cube) {
 //     }    
 // }
 
-vector<map<size_t, vector<face>>> open, closed;
+vector<map<size_t, pair<vector<face>,size_t>>> open, closed;
 vector<priority_queue<pair<size_t,vector<face>>>> pq;
-vector<queue<pair<size_t,vector<face>>>> qs;
+vector<queue<pair<size_t,pair<vector<face>,size_t>>>> qs;
 vector<mutex> mtx;
-size_t num = 0;
+size_t num = 0, sol_hash = 0, sol_thread = 0;
 bool solution_found = false;
 
-void enqueue(size_t target, vector<face>& a, size_t w){
+void enqueue(size_t target, vector<face>& a, size_t w, size_t parent){
     mtx[target].lock();
-    qs[target].push({(w + 1), a});
+    qs[target].push({(w + 1), {a, parent}});
     mtx[target].unlock();
 }
 
 void dequeue(size_t id, NibblePDB& cornerPDB){
-    queue<pair<size_t,vector<face>>> q;
+    queue<pair<size_t,pair<vector<face>,size_t>>> q;
     mtx[id].lock();
     while(!qs[id].empty()){
         q.push(qs[id].front());
@@ -101,17 +101,17 @@ void dequeue(size_t id, NibblePDB& cornerPDB){
     while(!q.empty()){
         auto [w, v] = q.front();
         q.pop();
-        if( !open[id].count(fhash(v)) && !closed[id].count(fhash(v)) ){
-            open[id][fhash(v)] = v;
-            pq[id].push({-(cornerHeuristic(v, cornerPDB) + w), v});
+        if( !open[id].count(fhash(v.first)) && !closed[id].count(fhash(v.first)) ){
+            open[id][fhash(v.first)] = v;
+            pq[id].push({-(cornerHeuristic(v.first, cornerPDB) + w), v.first});
         }
     }
 }
 
 void thread_astar(vector<face> cube, size_t id){
     cout << "thread " << id << " started\n";
-    NibblePDB cornerPDB("./pdbs/corner" + to_string(id) + ".pdb", NUM_CORNER_STATES, 1);
-    open[id][fhash(cube)] = cube;
+    NibblePDB cornerPDB("./pdbs/corner.pdb", NUM_CORNER_STATES, 1);
+    open[id][fhash(cube)] = {cube, fhash(cube)};
     pq[id].push({-cornerHeuristic(cube, cornerPDB), cube});
     while(!pq[id].empty()){
         if(solution_found) 
@@ -119,23 +119,24 @@ void thread_astar(vector<face> cube, size_t id){
         auto [w, v] = pq[id].top();
         pq[id].pop();
         w = -w; w -= cornerHeuristic(v, cornerPDB);
+        closed[id][fhash(v)] = {v, open[id][fhash(v)].second};
         open[id].erase(fhash(v));
-        closed[id][fhash(v)] = v;
         vector<vector<face>> adj = get_adj(v);
         for(auto a: adj){
             size_t target = fhash(a) % num;
             if(solved(a)){
                 solution_found = true;
-                print_cube(a);
-                cout << w + 1 << '\n';
+                sol_hash = fhash(a);
+                sol_thread = id;
+                closed[id][fhash(a)] = {a, fhash(v)};
                 return;
             }
             if(target == id && !open[id].count(fhash(a)) && !closed[id].count(fhash(a))){
-                open[id][fhash(a)] = a;
+                open[id][fhash(a)] = {a, fhash(v)};
                 pq[id].push({-(cornerHeuristic(a, cornerPDB) + w + 1), a});
             }
             else
-                enqueue(target, a, w);
+                enqueue(target, a, w, fhash(v));
         }
         dequeue(id, cornerPDB);
     }    
@@ -144,18 +145,18 @@ void thread_astar(vector<face> cube, size_t id){
 void sample(){
     vector<face> cube = get_cube();
     //print_cube(cube);
-    F(cube, CLOCK);
-    L(cube, CLOCK);
+    U(cube, CLOCK);
+    D(cube, COUNTER);
+    U(cube, CLOCK);
     B(cube, COUNTER);
-    R(cube, COUNTER);
-    U(cube, CLOCK);
-    F(cube, COUNTER);
-    U(cube, CLOCK);
-    L(cube, COUNTER);
-    L(cube, COUNTER);
     F(cube, CLOCK);
-    U(cube, CLOCK);
+    F(cube, CLOCK);
     D(cube, CLOCK);
+    R(cube, COUNTER);
+    R(cube, COUNTER);
+    L(cube, CLOCK);
+    L(cube, CLOCK);
+    U(cube, CLOCK);
     //D(cube, CLOCK);
     //L(cube, COUNTER);
     //R(cube, CLOCK);
@@ -165,6 +166,18 @@ void sample(){
     print_sample(cube);
 }
 
+
+size_t state = 0;
+void backtrack(vector<face>& cube, size_t parent){
+    if(fhash(cube) != parent){
+        auto [next_cube, next_parent] = closed[parent % num][parent];
+        backtrack(next_cube, next_parent);
+    }
+    cout << "===================================================\n";
+    cout << "STATE " << state++ << '\n';
+    print_cube(cube);
+}
+
 int main(int argc, char* argv[]){
     if(argc == 1){
         sample();
@@ -172,10 +185,10 @@ int main(int argc, char* argv[]){
     }
 
     num = atoi(argv[1]);
-    open = vector<map<size_t, vector<face>>>(num);
-    closed = vector<map<size_t, vector<face>>>(num);
+    open = vector<map<size_t, pair<vector<face>,size_t>>>(num);
+    closed = vector<map<size_t, pair<vector<face>,size_t>>>(num);
     pq = vector<priority_queue<pair<size_t,vector<face>>>>(num);
-    qs = vector<queue<pair<size_t,vector<face>>>>(num);
+    qs = vector<queue<pair<size_t,pair<vector<face>,size_t>>>>(num);
     mtx = vector<mutex>(num);
     
     vector<face> cube = read_cube();
@@ -186,6 +199,9 @@ int main(int argc, char* argv[]){
 
     for(size_t i = 0; i < num; i++)
         ts[i].join();
+    
+    auto [sol, parent] = closed[sol_thread][sol_hash];
+    backtrack(sol, parent);
 
     return 0;
 }
